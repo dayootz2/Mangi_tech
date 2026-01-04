@@ -32,7 +32,7 @@ async function autotypingCommand(sock, chatId, message) {
                     isForwarded: true,
                     forwardedNewsletterMessageInfo: {
                         newsletterJid: '120363398106360290@newsletter',
-                        newsletterName: 'ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ™',
+                        newsletterName: 'MANGI VIRUS™',
                         serverMessageId: -1
                     }
                 }
@@ -63,7 +63,7 @@ async function autotypingCommand(sock, chatId, message) {
                         isForwarded: true,
                         forwardedNewsletterMessageInfo: {
                             newsletterJid: '120363398106360290@newsletter',
-                            newsletterName: 'ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ™',
+                            newsletterName: 'MANGI VIRUS™',
                             serverMessageId: -1
                         }
                     }
@@ -86,7 +86,7 @@ async function autotypingCommand(sock, chatId, message) {
                 isForwarded: true,
                 forwardedNewsletterMessageInfo: {
                     newsletterJid: '120363398106360290@newsletter',
-                    newsletterName: 'ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ™',
+                    newsletterName: 'MANGI VIRUS™',
                     serverMessageId: -1
                 }
             }
@@ -101,7 +101,7 @@ async function autotypingCommand(sock, chatId, message) {
                 isForwarded: true,
                 forwardedNewsletterMessageInfo: {
                     newsletterJid: '120363398106360290@newsletter',
-                    newsletterName: 'ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ™',
+                    newsletterName: 'MANGI VIRUS™',
                     serverMessageId: -1
                 }
             }
