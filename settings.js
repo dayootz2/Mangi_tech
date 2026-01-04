@@ -1,9 +1,9 @@
 const settings = {
-  packname: 'ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ™',
+  packname: 'MANGI VIRUS™',
   author: '‎',
-  botName: "ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ",
-  botOwner: 'loft', // Your name
-  ownerNumber: '255778018545', //Set your number here without + symbol, just add country code & number without any space
+  botName: "MANGI VIRUS",
+  botOwner: 'Mangi', // Your name
+  ownerNumber: '255616486298', //Set your number here without + symbol, just add country code & number without any space
   giphyApiKey: 'qnl7ssQChTdPjsKta2Ax2LMaGXz303tq',
   commandMode: "public",
   maxStoreMessages: 20, 
