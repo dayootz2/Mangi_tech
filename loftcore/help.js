@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────
-//  MR LOFT – SLIDE MENU 
+//  MANGI TECHNOLOGY – SLIDE MENU 
 // ──────────────────────────────────────────────────────────────
 const settings = require('../settings');
 const axios = require('axios');
@@ -19,18 +19,18 @@ const READ_MORE = '\u200B'.repeat(4001);
  * Full Help Message (used only for building slides)
  */
 const HELP_MESSAGE = `
-╭▰▰〔 *ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ* 〕▰▰╮
-✖ 💠 *ʙᴏᴛ ɴᴀᴍᴇ:* ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ
-✖ 👑 *ᴏᴡɴᴇʀ:* 𝚂𝚒𝚛 𝙻𝙾𝙵𝚃
+╭▰▰〔 *MANGI VIRUS BOT* 〕▰▰╮
+✖ 💠 *BOT NAME:* MANGI VIRUS
+✖ 👑 *ᴏᴡ:* OWNER SIR MANGI
 ✖ ⚙️ *ᴠᴇʀꜱɪᴏɴ:* 𝚕𝚊𝚝𝚎𝚜𝚝 𝚀𝚞𝚊𝚗𝚝𝚞𝚖
 ✖ 💻 *ᴘʟᴀᴛꜰᴏʀᴍ:* 𝚀𝚞𝚊𝚗𝚝𝚞𝚖 (𝟸𝟸.𝟶𝟺)
 ✖ 🕐 *ᴜᴘᴛɪᴍᴇ:* ${getUptime()}
 ▰▰▰▰▰▰▰▰▰▰
- ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ʟᴏꜰᴛ™
+ ᴡᴇʟᴄᴏᴍᴇ MANGI VIRUS™
 ▰▰▰▰▰▰▰▰▰▰
-ꜰʀᴇᴇ ʙᴏᴛ 👉 https://quantum-three-taupe.vercel.app/
-ᴏᴡɴᴇʀ 👉 ꜱɪʀ ʟᴏꜰᴛ 
-ᴄᴏɴᴛᴀᴄᴛ 👉 +255778018545
+USER NAME👉Tech Mangi
+ᴏᴡɴᴇʀ 👉 MANGI VIRUS
+ᴄᴏɴᴛᴀᴄᴛ 👉 +255616486298
 
 # ᴘᴀɢᴇ 01
 ✖ 𝐡𝐞𝐥𝐩 | .𝐦𝐞𝐧𝐮
@@ -298,8 +298,8 @@ const sendSlideHelpMenu = async (sock, chatId, message) => {
         viewOnceMessage: {
           message: {
             interactiveMessage: {
-              body: { text: "*ꜱʟɪᴅᴇ ʀɪɢʜᴛ*" },
-              footer: { text: "©ᴘᴏᴡᴇʀᴅ ʙʏ ʟᴏꜰᴛ" },
+              body: { text: "*MANGI VIRUS*" },
+              footer: { text: "MANGI VIRUS" },
               carouselMessage: { cards, messageVersion: 1 },
               contextInfo: { forwardingScore: 0, isForwarded: false }
             }
