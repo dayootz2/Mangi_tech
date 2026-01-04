@@ -6,7 +6,7 @@ async function aliveCommand(sock, chatId, message) {
         const version = settings.version || "2.0";
 
         const caption = `*─━┄๑⚡๑┄━─*\n` +
-                        `    🟢 *ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ™ IS ALIVE!* ⚡\n` +
+                        `    🟢 *MANGI VIRUS™ IS ALIVE!* ⚡\n` +
                         `*─━┄๑⚡๑┄━─*\n\n` +
                         `✨ *Version:* ${version}\n` +
                         `🟢 *Status:* Online & Active\n` +
@@ -20,7 +20,7 @@ async function aliveCommand(sock, chatId, message) {
                         ` ➤ Sticker Maker • Meme • Fun\n` +
                         ` ➤ 200+ Working Commands!\n\n` +
                         `📌 Type *\`\( {prefix}menu\` au \` \){prefix}help\`* live\n\n` +
-                        `> © 2025 ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ™ - Powered by NodeJS`;
+                        `> © 2026 MANGI VIRUS™ - Powered by NodeJS`;
 
         // 1️⃣ Send Image + Caption with fake forwarded newsletter
         await sock.sendMessage(chatId, {
@@ -31,7 +31,7 @@ async function aliveCommand(sock, chatId, message) {
                 isForwarded: true,
                 forwardedNewsletterMessageInfo: {
                     newsletterJid: "120363398106360290@newsletter",
-                    newsletterName: "ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ™",
+                    newsletterName: "MANGI VIRUS™",
                     serverMessageId: -1
                 }
             }
@@ -40,7 +40,7 @@ async function aliveCommand(sock, chatId, message) {
         // 2️⃣ Send WORKING audio (Opus encoded .ogg) - tested December 2025
         await sock.sendMessage(chatId, {
             audio: { 
-                url: "./loft.mp3"   // ← NEW 100% WORKING VOICE
+                url: "./Mangi.mp3"   // ← NEW 100% WORKING VOICE
             },
             mimetype: "audio/mpeg",
             ptt: false,                                 // false = normal voice message (shows waveform)
@@ -50,7 +50,7 @@ async function aliveCommand(sock, chatId, message) {
     } catch (error) {
         console.error("Error in alive command:", error);
         await sock.sendMessage(chatId, {
-            text: "😭 *Error occurred*, But online!\n\n> ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ™ 💪"
+            text: "😭 *Error occurred*, But online!\n\n> MANGI VIRUS™ 💪"
         }, { quoted: message });
     }
 }
