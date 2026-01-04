@@ -7,7 +7,7 @@ const channelInfo = {
     isForwarded: true,
     forwardedNewsletterMessageInfo: {
         newsletterJid: '120363398106360290@newsletter',
-        newsletterName: 'ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ™',
+        newsletterName: 'MANGI VIRUS™',
         serverMessageId: -1
     }
 };
@@ -20,7 +20,7 @@ const messageTemplates = {
     }),
     success: (text, imageUrl) => ({
         image: { url: imageUrl },
-        caption: "ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ™",
+        caption: "MANGI VIRUS™",
         contextInfo: channelInfo
     })
 };
