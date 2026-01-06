@@ -6,7 +6,7 @@ const axios = require('axios');
 const { prepareWAMessageMedia, generateWAMessageFromContent, proto } = require('@whiskeysockets/baileys');
 
 const IMAGES = [
-  './image.jpg',
+  'https://files.catbox.moe/r5221t.png',
   // Add more images later
 ];
 
