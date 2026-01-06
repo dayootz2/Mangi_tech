@@ -32,7 +32,7 @@ async function autoreadCommand(sock, chatId, message) {
                     isForwarded: true,
                     forwardedNewsletterMessageInfo: {
                         newsletterJid: '120363398106360290@newsletter',
-                        newsletterName: '120363398106360290'                        serverMessageId: -1
+                        newsletterName: 'mangi'                        serverMessageId: -1
                     }
                 }
             });
