@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────
-//  MANGI TECHNOLOGY – SLIDE MENU 
+//  MANGI TECHNOLOGY –SLIDE MENU 
 // ──────────────────────────────────────────────────────────────
 const settings = require('../settings');
 const axios = require('axios');
@@ -21,7 +21,7 @@ const READ_MORE = '\u200B'.repeat(4001);
 const HELP_MESSAGE = `
 ╭▰▰〔 *MANGI VIRUS BOT* 〕▰▰╮
 ✖ 💠 *BOT NAME:* MANGI VIRUS
-✖ 👑 *ᴏᴡ:* OWNER SIR MANGI
+✖ 👑 ** OWNER SIR MANGI
 ✖ ⚙️ *ᴠᴇʀꜱɪᴏɴ:* 𝚕𝚊𝚝𝚎𝚜𝚝 𝚀𝚞𝚊𝚗𝚝𝚞𝚖
 ✖ 💻 *ᴘʟᴀᴛꜰᴏʀᴍ:* 𝚀𝚞𝚊𝚗𝚝𝚞𝚖 (𝟸𝟸.𝟶𝟺)
 ✖ 🕐 *ᴜᴘᴛɪᴍᴇ:* ${getUptime()}
@@ -31,7 +31,7 @@ const HELP_MESSAGE = `
 USER NAME👉Tech Mangi
 ᴏᴡɴᴇʀ 👉 MANGI VIRUS
 ᴄᴏɴᴛᴀᴄᴛ 👉 +255616486298
-
+GROUP SUPPORT 👉https://chat.whatsapp.com/GXaM0kgKHhO0QiD3hNPh5Z
 # ᴘᴀɢᴇ 01
 ✖ 𝐡𝐞𝐥𝐩 | .𝐦𝐞𝐧𝐮
 ✖ 𝐩𝐢𝐧𝐠
