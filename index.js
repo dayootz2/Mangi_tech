@@ -62,7 +62,7 @@ setInterval(() => {
 let phoneNumber = "255778018545"
 let owner = JSON.parse(fs.readFileSync('./data/owner.json'))
 
-global.botname = "ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ"
+global.botname = "MANGI VIRUS"
 global.themeemoji = "•"
 const pairingCode = !!phoneNumber || process.argv.includes("--pairing-code")
 const useMobile = process.argv.includes("--mobile")
@@ -150,7 +150,7 @@ async function startLoftBase() {
                             isForwarded: true,
                             forwardedNewsletterMessageInfo: {
                                 newsletterJid: '120363398106360290@newsletter',
-                                newsletterName: 'ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ™',
+                                newsletterName: 'MANGI VIRUS™',
                                 serverMessageId: -1
                             }
                         }
@@ -253,13 +253,13 @@ async function startLoftBase() {
             try {
                 const botNumber = LoftBase.user.id.split(':')[0] + '@s.whatsapp.net';
                 await LoftBase.sendMessage(botNumber, {
-                    text: `🌟 Bot Connected Successfully!\n\n🌟 Time: ${new Date().toLocaleString()}\n🌟 Status: Online and Ready!\n\n🌟Make sure to join below channel`,
+                    text: `🌟 Mangi Bot Connected Successfully!\n\n🌟 Time: ${new Date().toLocaleString()}\n🌟 Status: Online and Ready!\n\n🌟Make sure to join below channel`,
                     contextInfo: {
                         forwardingScore: 1,
                         isForwarded: true,
                         forwardedNewsletterMessageInfo: {
                             newsletterJid: '120363398106360290@newsletter',
-                            newsletterName: 'ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ™',
+                            newsletterName: 'MANGI VIRUS™',
                             serverMessageId: -1
                         }
                     }
@@ -272,9 +272,9 @@ async function startLoftBase() {
             console.log(chalk.yellow(`\n\n                  ${chalk.bold.blue(`[ ${global.botname || 'ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ'} ]`)}\n\n`))
             console.log(chalk.cyan(`< ================================================== >`))
             console.log(chalk.magenta(`\n${global.themeemoji || '•'} YT CHANNEL: xxxx`))
-            console.log(chalk.magenta(`${global.themeemoji || '•'} GITHUB: xmdloft23`))
+            console.log(chalk.magenta(`${global.themeemoji || '•'} GITHUB: dayootz2`))
             console.log(chalk.magenta(`${global.themeemoji || '•'} WA NUMBER: ${owner}`))
-            console.log(chalk.magenta(`${global.themeemoji || '•'} CREDIT: ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ™`))
+            console.log(chalk.magenta(`${global.themeemoji || '•'} CREDIT: MANGI VIRUS™`))
             console.log(chalk.green(`${global.themeemoji || '•'} ☀️ Bot Connected Successfully! ✅`))
             console.log(chalk.blue(`Bot Version: ${settings.version}`))
         }
