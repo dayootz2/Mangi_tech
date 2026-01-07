@@ -51,8 +51,9 @@ async function githubCommand(sock, chatId, message) {
 *⚡ MANGI VIRUS REPO  ⚡*
 
 ✨ *Repository* : MANGI REPO`
+
 ⭐ *Stars* : ${formatNumber(data.stargazers_count)}
-🍴 *Forks* : ${formatNumber(data.forks_count)}
+    f🍴 *Forks* : ${formatNumber(data.forks_count)}
 👀 *Watchers* : ${formatNumber(data.watchers_count)}
 📦 *Size* : ${(data.size / 1024).toFixed(2)} MB
 📅 *Last Update* : ${moment(data.updated_at).tz('Asia/Jakarta').format('DD/MM/YYYY - HH:mm:ss')} (WIB)
