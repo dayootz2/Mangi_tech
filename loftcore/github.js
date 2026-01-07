@@ -10,7 +10,7 @@ const path = require('path');
  * @param {Object} message - Original message object for quoting
  */
 async function githubCommand(sock, chatId, message) {
-  const repoUrl =  'https://github.com/dayootz2/Mangi_tech.git '  const imagePath = path.resolve('./image.jpg');
+  const repoUrl =  'https://github.com/dayootz2/Mangi_tech.git'  const imagePath = path.resolve('./image.jpg');
 
   // Check if image exists first
   if (!fs.existsSync(imagePath)) {
