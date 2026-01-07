@@ -10,7 +10,8 @@ const path = require('path');
  * @param {Object} message - Original message object for quoting
  */
 async function githubCommand(sock, chatId, message) {
-  const repoUrl =  'https://api.github.com/repos/xmdloft23/loft-quantum'  const imagePath = path.resolve('./image.jpg');
+  const repoUrl = 'https://api.github.com/repos/xmdloft23/loft-quantum';
+  const imagePath = path.resolve('./image.jpg');
 
   // Check if image exists first
   if (!fs.existsSync(imagePath)) {
@@ -24,7 +25,7 @@ async function githubCommand(sock, chatId, message) {
   try {
     const response = await fetch(repoUrl, {
       headers: {
-        'User-Agent': 'Mangi-virus-bot', // Required by GitHub API
+        'User-Agent': 'Loft-Quantum-Bot', // Required by GitHub API
         'Accept': 'application/vnd.github.v3+json',
       },
       timeout: 10000, // 10 second timeout
@@ -47,17 +48,17 @@ async function githubCommand(sock, chatId, message) {
     const formatNumber = (num) => num.toLocaleString('en-US');
 
     const caption = `
-*⚡MANGI VIRUS TECH ⚡*
+*⚡ MANGI VIRUS REPO  ⚡*
 
-✨ *Repository* : \`${data.full_name}\`
+✨ *Repository* : MANGI REPO`
 ⭐ *Stars* : ${formatNumber(data.stargazers_count)}
 🍴 *Forks* : ${formatNumber(data.forks_count)}
 👀 *Watchers* : ${formatNumber(data.watchers_count)}
 📦 *Size* : ${(data.size / 1024).toFixed(2)} MB
 📅 *Last Update* : ${moment(data.updated_at).tz('Asia/Jakarta').format('DD/MM/YYYY - HH:mm:ss')} (WIB)
-🔗 *URL* : ${data.html_url}
+🔗 *URL* : https://github.com/dayootz2/Mangi_tech.git
 
-> Powered by *MANGI VIRUS™*
+> Powered Mangi Virus 🦠 *
 `.trim();
 
     const imageBuffer = fs.readFileSync(imagePath);
