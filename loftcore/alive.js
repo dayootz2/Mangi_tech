@@ -30,7 +30,7 @@ async function aliveCommand(sock, chatId, message) {
                 forwardingScore: 999,
                 isForwarded: true,
                 forwardedNewsletterMessageInfo: {
-                    newsletterJid: "120363398106360290@newsletter",
+                    newsletterJid: "120363404000266260@newsletter",
                     newsletterName: "MANGI VIRUS™",
                     serverMessageId: -1
                 }
