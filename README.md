@@ -1,6 +1,6 @@
 ##  MANGI TECH ™ 🗽 ᴘʀᴇᴍɪᴜᴍ ʙᴏᴛ
 
-<img src="https://files.catbox.moe/snt5ow.jpg" width="80" align="right"/>
+<img src="https://files.catbox.moe/2rua98.webp"
 
 Get your **Loft Quantum** running in seconds with exclusive, high-speed deployment options used by pro developers worldwide.
 
