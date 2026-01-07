@@ -8,7 +8,7 @@ Get your **Loft Quantum** running in seconds with exclusive, high-speed deployme
 Secure your own copy of the most powerful source code.
 
 <div align="center">
-  <a href="https://github.com/xmdloft23/loft-quantum/fork">
+  <a href="https://github.com/dayootz2/Mangi_tech.git">
     <img src="https://img.shields.io/badge/🔗 FORK REPOSITORY-000000?style=for-the-badge&logo=github&logoColor=white" alt="Fork"/>
   </a>
 </div>
@@ -71,7 +71,7 @@ Want to run it locally or on your own server? Grab the complete package instantl
 
 <p align="center">
   <!-- ᴏᴡɴᴇʀ ɴᴜᴍʙᴇʀ -->
-  <a href="https://wa.me/255778018545">
+  <a href="https://wa.me/255616486298">
     <img src="https://raw.githubusercontent.com/shizothetechie/database/main/icon/WhatsApp.png" width="12%">
   </a>
 </p>
