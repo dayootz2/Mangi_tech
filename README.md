@@ -1,4 +1,4 @@
-##  ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ™ 🗽 ᴘʀᴇᴍɪᴜᴍ ʙᴏᴛ
+##  MANGI TECH ™ 🗽 ᴘʀᴇᴍɪᴜᴍ ʙᴏᴛ
 
 <img src="https://files.catbox.moe/snt5ow.jpg" width="80" align="right"/>
 
