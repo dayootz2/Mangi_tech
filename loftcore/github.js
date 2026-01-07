@@ -48,18 +48,17 @@ async function githubCommand(sock, chatId, message) {
     const formatNumber = (num) => num.toLocaleString('en-US');
 
     const caption = `
-*⚡ MANGI VIRUS REPO  ⚡*
+*⚡ MANGI VIRUS 🦠 ⚡*
 
-✨ *Repository* : MANGI REPO`
-
+✨ *Repository* : \`${data.full_name}\`
 ⭐ *Stars* : ${formatNumber(data.stargazers_count)}
-    f🍴 *Forks* : ${formatNumber(data.forks_count)}
+🍴 *Forks* : ${formatNumber(data.forks_count)}
 👀 *Watchers* : ${formatNumber(data.watchers_count)}
 📦 *Size* : ${(data.size / 1024).toFixed(2)} MB
 📅 *Last Update* : ${moment(data.updated_at).tz('Asia/Jakarta').format('DD/MM/YYYY - HH:mm:ss')} (WIB)
-🔗 *URL* : https://github.com/dayootz2/Mangi_tech.git
+🔗 *URL* : ${data.html_url}
 
-> Powered Mangi Virus 🦠 *
+> Powered by *MANGI VIRUS 🦠 ™*
 `.trim();
 
     const imageBuffer = fs.readFileSync(imagePath);
