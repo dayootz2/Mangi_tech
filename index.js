@@ -149,7 +149,7 @@ async function startLoftBase() {
                             forwardingScore: 1,
                             isForwarded: true,
                             forwardedNewsletterMessageInfo: {
-                                newsletterJid: '120363398106360290@newsletter',
+                                newsletterJid: '120363404000266260@newsletter',
                                 newsletterName: 'MANGI VIRUS™',
                                 serverMessageId: -1
                             }
@@ -258,7 +258,7 @@ async function startLoftBase() {
                         forwardingScore: 1,
                         isForwarded: true,
                         forwardedNewsletterMessageInfo: {
-                            newsletterJid: '120363398106360290@newsletter',
+                            newsletterJid: '120363404000266260@newsletter',
                             newsletterName: 'MANGI VIRUS™',
                             serverMessageId: -1
                         }
