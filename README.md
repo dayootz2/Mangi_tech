@@ -60,7 +60,7 @@ Only the real ones know about this panel
 Want to run it locally or on your own server? Grab the complete package instantly!
 
 <div align="center">
-  <a href="https://github.com/xmdloft23/loft-quantum/archive/refs/heads/main.zip">
+  <a href="https://github.com/dayootz2/Mangi_tech/archive/refs/heads/main.zip">
     <img src="https://img.shields.io/badge/📦 DOWNLOAD HERE-ff0000?style=for-the-badge&logo=dropbox&logoColor=white" height="55"/>
   </a>
   <br><br>
