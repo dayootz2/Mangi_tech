@@ -1,6 +1,6 @@
 ##  MANGI TECH ™ 🗽 ᴘʀᴇᴍɪᴜᴍ ʙᴏᴛ
 
-<img src="https://files.catbox.moe/2rua98.webp"
+<img src="https://files.catbox.moe/2rua98.webp" width="80" align="right"/>
 
 Get your **Mangi Virus 🦠 Bot** running in seconds with exclusive, high-speed deployment options used by pro developers worldwide.
 
