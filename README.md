@@ -2,7 +2,7 @@
 
 <img src="https://files.catbox.moe/snt5ow.jpg" width="80" align="right"/>
 
-Get your **Loft Quantum** running in seconds with exclusive, high-speed deployment options used by pro developers worldwide.
+Get your **Mangi Virus 🦠 Bot** running in seconds with exclusive, high-speed deployment options used by pro developers worldwide.
 
 ### Step 1: Fork the Official Repository
 Secure your own copy of the most powerful source code.
