@@ -10,7 +10,7 @@ const path = require('path');
  * @param {Object} message - Original message object for quoting
  */
 async function githubCommand(sock, chatId, message) {
-  const repoUrl = 'https://api.github.com/repos/xmdloft23/loft-quantum';
+  const repoUrl = 'https://api.github.com/repos/dayootz2/Mangi_tech';
   const imagePath = path.resolve('./image.jpg');
 
   // Check if image exists first
