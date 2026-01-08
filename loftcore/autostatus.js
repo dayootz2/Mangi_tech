@@ -7,8 +7,8 @@ const channelInfo = {
         forwardingScore: 1,
         isForwarded: true,
         forwardedNewsletterMessageInfo: {
-            newsletterJid: '120363404000266260letter',
-            newsletterName: 'MANGI TECH'
+            newsletterJid: '120363404000266260@newsletter',
+            newsletterName: 'MANGI Qᴜᴀɴᴛᴜᴍ™',
             serverMessageId: -1
         }
     }
