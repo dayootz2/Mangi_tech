@@ -1,391 +1,988 @@
-        require('./settings')
-const { Boom } = require('@hapi/boom')
-const fs = require('fs')
-const chalk = require('chalk')
-const FileType = require('file-type')
-const path = require('path')
-const axios = require('axios')
-const { handleMessages, handleGroupParticipantUpdate, handleStatus } = require('./main');
-const PhoneNumber = require('awesome-phonenumber')
-const { imageToWebp, videoToWebp, writeExifImg, writeExifVid } = require('./lib/exif')
-const { smsg, isUrl, generateMessageTag, getBuffer, getSizeMedia, fetch, await, sleep, reSize } = require('./lib/myfunc')
+require("events").EventEmitter.defaultMaxListeners = 960;
+require("./gift/gmdHelpers");
+
 const {
-    default: makeWASocket,
-    useMultiFileAuthState,
-    DisconnectReason,
-    fetchLatestBaileysVersion,
-    generateForwardMessageContent,
-    prepareWAMessageMedia,
-    generateWAMessageFromContent,
-    generateMessageID,
-    downloadContentFromMessage,
-    jidDecode,
-    proto,
+    default: giftedConnect,
+    isJidGroup,
     jidNormalizedUser,
-    makeCacheableSignalKeyStore,
-    delay
-} = require("@whiskeysockets/baileys")
-const NodeCache = require("node-cache")
-// Using a lightweight persisted store instead of makeInMemoryStore (compat across versions)
-const pino = require("pino")
-const readline = require("readline")
-const { parsePhoneNumber } = require("libphonenumber-js")
-const { PHONENUMBER_MCC } = require('@whiskeysockets/baileys/lib/Utils/generics')
-const { rmSync, existsSync } = require('fs')
-const { join } = require('path')
+    isJidBroadcast,
+    downloadMediaMessage,
+    downloadContentFromMessage,
+    getContentType,
+    fetchLatestWaWebVersion,
+} = require("gifted-baileys");
 
-// Import lightweight store
-const store = require('./lib/lightweight_store')
+const {
+    evt,
+    logger,
+    emojis,
+    commands,
+    setSudo,
+    delSudo,
+    GiftedTechApi,
+    GiftedApiKey,
+    GiftedAutoReact,
+    GiftedAntiLink,
+    GiftedAntibad,
+    GiftedAntiGroupMention,
+    GiftedAutoBio,
+    handleGameMessage,
+    GiftedChatBot,
+    loadSession,
+    useSQLiteAuthState,
+    getMediaBuffer,
+    getSudoNumbers,
+    getFileContentType,
+    bufferToStream,
+    uploadToPixhost,
+    uploadToImgBB,
+    setCommitHash,
+    getCommitHash,
+    gmdBuffer,
+    gmdJson,
+    formatAudio,
+    formatVideo,
+    toAudio,
+    uploadToGithubCdn,
+    uploadToGiftedCdn,
+    uploadToCatbox,
+    GiftedAnticall,
+    createContext,
+    createContext2,
+    verifyJidState,
+    GiftedPresence,
+    GiftedAntiDelete,
+    GiftedAntiEdit,
+    syncDatabase,
+    initializeSettings,
+    initializeGroupSettings,
+    getAllSettings,
+    DEFAULT_SETTINGS,
+    standardizeJid,
+    serializeMessage,
+    loadPlugins,
+    findCommand,
+    findBodyCommand,
+    createHelpers,
+    getGroupInfo,
+    buildSuperUsers,
+    getGroupMetadata,
+    createSocketConfig,
+    safeNewsletterFollow,
+    safeGroupAcceptInvite,
+    setupConnectionHandler,
+    setupGroupEventsListeners,
+    initializeLidStore,
+} = require("./gift");
 
-// Initialize store
-store.readFromFile()
-const settings = require('./settings')
-setInterval(() => store.writeToFile(), settings.storeWriteInterval || 10000)
+const {
+    saveAntiDelete,
+    findAntiDelete,
+    removeAntiDelete,
+    startCleanup,
+    SQLiteStore,
+} = require('./gift/database/messageStore');
 
-// Memory optimization - Force garbage collection if available
-setInterval(() => {
-    if (global.gc) {
-        global.gc()
-        console.log('🧹 Garbage collection completed')
-    }
-}, 60_000) // every 1 minute
+const config = require("./config");
+const googleTTS = require("google-tts-api");
+const fs = require("fs-extra");
+const path = require("path");
+const axios = require('axios');
+const express = require("express");
 
-// Memory monitoring - Restart if RAM gets too high
-setInterval(() => {
-    const used = process.memoryUsage().rss / 1024 / 1024
-    if (used > 400) {
-        console.log('⚠️ RAM too high (>400MB), restarting bot...')
-        process.exit(1) // Panel will auto-restart
-    }
-}, 30_000) // check every 30 seconds
-
-let phoneNumber = "255778018545"
-let owner = JSON.parse(fs.readFileSync('./data/owner.json'))
-
-global.botname = "ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ"
-global.themeemoji = "•"
-const pairingCode = !!phoneNumber || process.argv.includes("--pairing-code")
-const useMobile = process.argv.includes("--mobile")
-
-// Only create readline interface if we're in an interactive environment
-const rl = process.stdin.isTTY ? readline.createInterface({ input: process.stdin, output: process.stdout }) : null
-const question = (text) => {
-    if (rl) {
-        return new Promise((resolve) => rl.question(text, resolve))
-    } else {
-        // In non-interactive environment, use ownerNumber from settings
-        return Promise.resolve(settings.ownerNumber || phoneNumber)
-    }
-}
-
-
-async function startLoftBase() {
+/**
+ * Resolves any JID to a real phone JID (@s.whatsapp.net).
+ * Returns the original jid unchanged if it is already a real JID.
+ * Returns null only when jid itself is null/undefined.
+ * When a LID cannot be resolved it returns the original LID as a best-effort
+ * fallback so the operation still fires rather than being silently skipped.
+ */
+async function resolveRealJid(Gifted, jid) {
+    if (!jid) return null;
+    if (!jid.endsWith('@lid')) return jid;   // already real
     try {
-        let { version, isLatest } = await fetchLatestBaileysVersion()
-        const { state, saveCreds } = await useMultiFileAuthState(`./session`)
-        const msgRetryCounterCache = new NodeCache()
+        const { getLidMapping } = require('./gift/connection/groupCache');
+        const cached = getLidMapping(jid);
+        if (cached) return cached;
+    } catch (_) {}
+    try {
+        const resolved = await Gifted.getJidFromLid(jid);
+        if (resolved && !resolved.endsWith('@lid')) return resolved;
+    } catch (_) {}
+    try {
+        const { getLidMappingFromDb } = require('./gift/database/lidMapping');
+        const fromDb = await getLidMappingFromDb(jid);
+        if (fromDb) return fromDb;
+    } catch (_) {}
+    return jid;   // best effort — return original LID so the operation still fires
+}
 
-        const LoftBase = makeWASocket({
-            version,
-            logger: pino({ level: 'silent' }),
-            printQRInTerminal: !pairingCode,
-            browser: ["Ubuntu", "Chrome", "20.0.04"],
-            auth: {
-                creds: state.creds,
-                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
-            },
-            markOnlineOnConnect: true,
-            generateHighQualityLinkPreview: true,
-            syncFullHistory: false,
-            getMessage: async (key) => {
-                let jid = jidNormalizedUser(key.remoteJid)
-                let msg = await store.loadMessage(jid, key.id)
-                return msg?.message || ""
-            },
-            msgRetryCounterCache,
-            defaultQueryTimeoutMs: 60000,
-            connectTimeoutMs: 60000,
-            keepAliveIntervalMs: 10000,
-        })
+const { SESSION_ID: sessionId } = config;
+const PORT = process.env.PORT || 5000;
+const app = express();
+let Gifted;
+let store;
 
-        // Save credentials when they update
-        LoftBase.ev.on('creds.update', saveCreds)
+logger.level = "silent";
+app.use(express.static("gift"));
+app.get("/", (req, res) => res.sendFile(__dirname + "/gift/gifted.html"));
+app.get("/health", (req, res) =>
+    res.status(200).json({ status: "alive", uptime: process.uptime() }),
+);
+app.listen(PORT, () => console.log(`✅ Server Running on Port: ${PORT}`));
 
-    store.bind(LoftBase.ev)
-
-    // Message handling
-    LoftBase.ev.on('messages.upsert', async chatUpdate => {
-        try {
-            const mek = chatUpdate.messages[0]
-            if (!mek.message) return
-            mek.message = (Object.keys(mek.message)[0] === 'ephemeralMessage') ? mek.message.ephemeralMessage.message : mek.message
-            if (mek.key && mek.key.remoteJid === 'status@broadcast') {
-                await handleStatus(LoftBase, chatUpdate);
-                return;
-            }
-            // In private mode, only block non-group messages (allow groups for moderation)
-            // Note: LoftBase.public is not synced, so we check mode in main.js instead
-            // This check is kept for backward compatibility but mainly blocks DMs
-            if (!LoftBase.public && !mek.key.fromMe && chatUpdate.type === 'notify') {
-                const isGroup = mek.key?.remoteJid?.endsWith('@g.us')
-                if (!isGroup) return // Block DMs in private mode, but allow group messages
-            }
-            if (mek.key.id.startsWith('BAE5') && mek.key.id.length === 16) return
-
-            // Clear message retry cache to prevent memory bloat
-            if (LoftBase?.msgRetryCounterCache) {
-                LoftBase.msgRetryCounterCache.clear()
-            }
-
-            try {
-                await handleMessages(LoftBase, chatUpdate, true)
-            } catch (err) {
-                console.error("Error in handleMessages:", err)
-                // Only try to send error message if we have a valid chatId
-                if (mek.key && mek.key.remoteJid) {
-                    await LoftBase.sendMessage(mek.key.remoteJid, {
-                        text: '❌ An error occurred while processing your message.',
-                        contextInfo: {
-                            forwardingScore: 1,
-                            isForwarded: true,
-                            forwardedNewsletterMessageInfo: {
-                                newsletterJid: '120363398106360290@newsletter',
-                                newsletterName: 'ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ™',
-                                serverMessageId: -1
-                            }
-                        }
-                    }).catch(console.error);
-                }
-            }
-        } catch (err) {
-            console.error("Error in messages.upsert:", err)
-        }
-    })
-
-    // Add these event handlers for better functionality
-    LoftBase.decodeJid = (jid) => {
-        if (!jid) return jid
-        if (/:\d+@/gi.test(jid)) {
-            let decode = jidDecode(jid) || {}
-            return decode.user && decode.server && decode.user + '@' + decode.server || jid
-        } else return jid
+setInterval(() => {
+    const used = process.memoryUsage();
+    if (used.heapUsed > 400 * 1024 * 1024) {
+        if (global.gc) global.gc();
     }
+}, 60000);
 
-    LoftBase.ev.on('contacts.update', update => {
-        for (let contact of update) {
-            let id = LoftBase.decodeJid(contact.id)
-            if (store && store.contacts) store.contacts[id] = { id, name: contact.notify }
-        }
-    })
+setInterval(async () => {
+    try {
+        const http = require("http");
+        http.get(`http://localhost:${PORT}/health`, () => {});
+    } catch (e) {}
+}, 240000);
 
-    LoftBase.getName = (jid, withoutContact = false) => {
-        id = LoftBase.decodeJid(jid)
-        withoutContact = LoftBase.withoutContact || withoutContact
-        let v
-        if (id.endsWith("@g.us")) return new Promise(async (resolve) => {
-            v = store.contacts[id] || {}
-            if (!(v.name || v.subject)) v = LoftBase.groupMetadata(id) || {}
-            resolve(v.name || v.subject || PhoneNumber('+' + id.replace('@s.whatsapp.net', '')).getNumber('international'))
-        })
-        else v = id === '0@s.whatsapp.net' ? {
-            id,
-            name: 'WhatsApp'
-        } : id === LoftBase.decodeJid(LoftBase.user.id) ?
-            LoftBase.user :
-            (store.contacts[id] || {})
-        return (withoutContact ? '' : v.name) || v.subject || v.verifiedName || PhoneNumber('+' + jid.replace('@s.whatsapp.net', '')).getNumber('international')
-    }
+const sessionDir = path.join(__dirname, "gift", "session");
+const pluginsPath = path.join(__dirname, "gifted");
 
-    LoftBase.public = true
+let botSettings = {};
+async function loadBotSettings() {
+    await syncDatabase();
+    await initializeSettings();
+    await initializeGroupSettings();
+    botSettings = await getAllSettings();
+    return botSettings;
+}
 
-    LoftBase.serializeM = (m) => smsg(LoftBase, m, store)
+startCleanup();
 
-    // Handle pairing code
-    if (pairingCode && !LoftBase.authState.creds.registered) {
-        if (useMobile) throw new Error('Cannot use pairing code with mobile api')
+async function startGifted() {
+    try {
+        const { version } = await fetchLatestWaWebVersion();
+        const sessionDbPath = path.join(sessionDir, "session.db");
+        const { state, saveCreds } = await useSQLiteAuthState(sessionDbPath);
 
-        let phoneNumber
-        if (!!global.phoneNumber) {
-            phoneNumber = global.phoneNumber
-        } else {
-            phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 🌟\nFormat: 255xxx (without + or spaces) : `)))
-        }
+        if (store) store.destroy();
+        store = new SQLiteStore();
 
-        // Clean the phone number - remove any non-digit characters
-        phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
-
-        // Validate the phone number using awesome-phonenumber
-        const pn = require('awesome-phonenumber');
-        if (!pn('+' + phoneNumber).isValid()) {
-            console.log(chalk.red('Invalid phone number. Please enter your full international number (e.g., 15551234567 for US, 447911123456 for UK, etc.) without + or spaces.'));
-            process.exit(1);
-        }
-
-        setTimeout(async () => {
-            try {
-                let code = await LoftBase.requestPairingCode(phoneNumber)
-                code = code?.match(/.{1,4}/g)?.join("-") || code
-                console.log(chalk.black(chalk.bgGreen(`Your Pairing Code : `)), chalk.black(chalk.white(code)))
-                console.log(chalk.yellow(`\nPlease enter this code in your WhatsApp app:\n1. Open WhatsApp\n2. Go to Settings > Linked Devices\n3. Tap "Link a Device"\n4. Enter the code shown above`))
-            } catch (error) {
-                console.error('Error requesting pairing code:', error)
-                console.log(chalk.red('Failed to get pairing code. Please check your phone number and try again.'))
+        const socketConfig = createSocketConfig(version, state, logger);
+        socketConfig.getMessage = async (key) => {
+            if (store) {
+                const msg = await store.loadMessage(key.remoteJid, key.id);
+                return msg?.message || undefined;
             }
-        }, 3000)
-    }
+            return { conversation: "Error occurred" };
+        };
 
-    // Connection handling
-    LoftBase.ev.on('connection.update', async (s) => {
-        const { connection, lastDisconnect, qr } = s
-        
-        if (qr) {
-            console.log(chalk.yellow('📱 QR Code generated. Please scan with WhatsApp.'))
-        }
-        
-        if (connection === 'connecting') {
-            console.log(chalk.yellow('🔄 Connecting to WhatsApp...'))
-        }
-        
-        if (connection == "open") {
-            console.log(chalk.magenta(` `))
-            console.log(chalk.yellow(`🌿Connected to => ` + JSON.stringify(LoftBase.user, null, 2)))
+        Gifted = giftedConnect(socketConfig);
+        store.bind(Gifted.ev);
 
-            try {
-                const botNumber = LoftBase.user.id.split(':')[0] + '@s.whatsapp.net';
-                await LoftBase.sendMessage(botNumber, {
-                    text: `🌟 Bot Connected Successfully!\n\n🌟 Time: ${new Date().toLocaleString()}\n🌟 Status: Online and Ready!\n\n🌟Make sure to join below channel`,
-                    contextInfo: {
-                        forwardingScore: 1,
-                        isForwarded: true,
-                        forwardedNewsletterMessageInfo: {
-                            newsletterJid: '120363398106360290@newsletter',
-                            newsletterName: 'ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ™',
-                            serverMessageId: -1
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error('Error sending connection message:', error.message)
-            }
+        Gifted.ev.process(async (events) => {
+            if (events["creds.update"]) await saveCreds();
+        });
 
-            await delay(1999)
-            console.log(chalk.yellow(`\n\n                  ${chalk.bold.blue(`[ ${global.botname || 'ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ'} ]`)}\n\n`))
-            console.log(chalk.cyan(`< ================================================== >`))
-            console.log(chalk.magenta(`\n${global.themeemoji || '•'} YT CHANNEL: xxxx`))
-            console.log(chalk.magenta(`${global.themeemoji || '•'} GITHUB: xmdloft23`))
-            console.log(chalk.magenta(`${global.themeemoji || '•'} WA NUMBER: ${owner}`))
-            console.log(chalk.magenta(`${global.themeemoji || '•'} CREDIT: ʟᴏꜰᴛ Qᴜᴀɴᴛᴜᴍ™`))
-            console.log(chalk.green(`${global.themeemoji || '•'} ☀️ Bot Connected Successfully! ✅`))
-            console.log(chalk.blue(`Bot Version: ${settings.version}`))
-        }
-        
-        if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut
-            const statusCode = lastDisconnect?.error?.output?.statusCode
-            
-            console.log(chalk.red(`Connection closed due to ${lastDisconnect?.error}, reconnecting ${shouldReconnect}`))
-            
-            if (statusCode === DisconnectReason.loggedOut || statusCode === 401) {
-                try {
-                    rmSync('./session', { recursive: true, force: true })
-                    console.log(chalk.yellow('Session folder deleted. Please re-authenticate.'))
-                } catch (error) {
-                    console.error('Error deleting session:', error)
-                }
-                console.log(chalk.red('Session logged out. Please re-authenticate.'))
-            }
-            
-            if (shouldReconnect) {
-                console.log(chalk.yellow('Reconnecting...'))
-                await delay(5000)
-                startLoftBase()
-            }
-        }
-    })
+        setupAutoReact(Gifted);
+        setupAntiDelete(Gifted);
+        setupAutoBio(Gifted);
+        setupAntiCall(Gifted);
+        setupNewsletterReact(Gifted);
+        setupPresence(Gifted);
+        setupChatBotAndAntiLink(Gifted);
+        setupAntiEdit(Gifted);
+        setupStatusHandlers(Gifted);
+        setupGroupEventsListeners(Gifted);
 
-    // Track recently-notified callers to avoid spamming messages
-    const antiCallNotified = new Set();
+        loadPlugins(pluginsPath);
 
-    // Anticall handler: block callers when enabled
-    LoftBase.ev.on('call', async (calls) => {
-        try {
-            const { readState: readAnticallState } = require('./commands/anticall');
-            const state = readAnticallState();
-            if (!state.enabled) return;
-            for (const call of calls) {
-                const callerJid = call.from || call.peerJid || call.chatId;
-                if (!callerJid) continue;
-                try {
-                    // First: attempt to reject the call if supported
-                    try {
-                        if (typeof LoftBase.rejectCall === 'function' && call.id) {
-                            await LoftBase.rejectCall(call.id, callerJid);
-                        } else if (typeof LoftBase.sendCallOfferAck === 'function' && call.id) {
-                            await LoftBase.sendCallOfferAck(call.id, callerJid, 'reject');
-                        }
-                    } catch {}
+        setupCommandHandler(Gifted);
 
-                    // Notify the caller only once within a short window
-                    if (!antiCallNotified.has(callerJid)) {
-                        antiCallNotified.add(callerJid);
-                        setTimeout(() => antiCallNotified.delete(callerJid), 60000);
-                        await LoftBase.sendMessage(callerJid, { text: '📵 Anticall is enabled. Your call was rejected and you will be blocked.' });
-                    }
-                } catch {}
-                // Then: block after a short delay to ensure rejection and message are processed
+        setupConnectionHandler(Gifted, sessionDir, startGifted, {
+            onOpen: async (Gifted) => {
+                const s = await getAllSettings();
+                await safeNewsletterFollow(Gifted, s.NEWSLETTER_JID);
+                await safeGroupAcceptInvite(Gifted, s.GC_JID);
+                await initializeLidStore(Gifted);
+
                 setTimeout(async () => {
-                    try { await LoftBase.updateBlockStatus(callerJid, 'block'); } catch {}
-                }, 800);
-            }
-        } catch (e) {
-            // ignore
-        }
-    });
+                    try {
+                        const totalCommands = commands.filter(
+                            (c) => c.pattern && !c.dontAddCommandList,
+                        ).length;
+                        console.log("💜 Connected to Whatsapp, Active!");
 
-    LoftBase.ev.on('group-participants.update', async (update) => {
-        await handleGroupParticipantUpdate(LoftBase, update);
-    });
+                        if (s.STARTING_MESSAGE === "true") {
+                            const d = DEFAULT_SETTINGS;
+                            const md =
+                                s.MODE === "public" ? "public" : "private";
+                            const connectionMsg = `
+*${s.BOT_NAME || d.BOT_NAME} 𝐂𝐎𝐍𝐍𝐄𝐂𝐓𝐄𝐃*
 
-    LoftBase.ev.on('messages.upsert', async (m) => {
-        if (m.messages[0].key && m.messages[0].key.remoteJid === 'status@broadcast') {
-            await handleStatus(LoftBase, m);
-        }
-    });
+𝐏𝐫𝐞𝐟𝐢𝐱       : *[ ${s.PREFIX || d.PREFIX} ]*
+𝐏𝐥𝐮𝐠𝐢𝐧𝐬      : *${totalCommands}*
+𝐌𝐨𝐝𝐞        : *${md}*
+𝐎𝐰𝐧𝐞𝐫       : *${s.OWNER_NUMBER || d.OWNER_NUMBER}*
+𝐓𝐮𝐭𝐨𝐫𝐢𝐚𝐥𝐬     : *${s.YT || d.YT}*
+𝐔𝐩𝐝𝐚𝐭𝐞𝐬      : *${s.NEWSLETTER_URL || d.NEWSLETTER_URL}*
 
-    LoftBase.ev.on('status.update', async (status) => {
-        await handleStatus(LoftBase, status);
-    });
+𝐍𝐨𝐭𝐞:  Bot may take some few seconds/minutes to sync before being ready to use.
 
-    LoftBase.ev.on('messages.reaction', async (status) => {
-        await handleStatus(LoftBase, status);
-    });
+> *${s.CAPTION || d.CAPTION}*`;
 
-    return LoftBase
+                            await Gifted.sendMessage(
+                                Gifted.user.id,
+                                {
+                                    text: connectionMsg,
+                                    ...(await createContext(
+                                        s.BOT_NAME || d.BOT_NAME,
+                                        {
+                                            title: "BOT INTEGRATED",
+                                            body: "Status: Ready for Use",
+                                        },
+                                    )),
+                                },
+                                {
+                                    disappearingMessagesInChat: true,
+                                    ephemeralExpiration: 300,
+                                },
+                            );
+                        }
+                    } catch (err) {
+                        console.error("Post-connection setup error:", err);
+                    }
+                }, 5000);
+            },
+        });
+
+        process.on("SIGINT", () => store?.destroy());
+        process.on("SIGTERM", () => store?.destroy());
     } catch (error) {
-        console.error('Error in startLoftBase:', error)
-        await delay(5000)
-        startLoftBase()
+        console.error("Socket initialization error:", error);
+        setTimeout(() => startGifted(), 5000);
     }
 }
 
+function setupAutoReact(Gifted) {
+    Gifted.ev.on("messages.upsert", async (mek) => {
+        try {
+            const ms = mek.messages[0];
+            const s = await getAllSettings();
+            const autoReactMode = s.AUTO_REACT || "off";
 
-// Start the bot with error handling
-startLoftBase().catch(error => {
-    console.error('Fatal error:', error)
-    process.exit(1)
-})
-process.on('uncaughtException', (err) => {
-    console.error('Uncaught Exception:', err)
-})
+            if (
+                autoReactMode === "off" ||
+                autoReactMode === "false" ||
+                ms.key.fromMe ||
+                !ms.message
+            )
+                return;
 
-process.on('unhandledRejection', (err) => {
-    console.error('Unhandled Rejection:', err)
-})
+            const from = ms.key.remoteJid;
+            const isGroup = from?.endsWith("@g.us");
+            const isDm = from?.endsWith("@s.whatsapp.net");
 
-let file = require.resolve(__filename)
-fs.watchFile(file, () => {
-    fs.unwatchFile(file)
-    console.log(chalk.redBright(`Update ${__filename}`))
-    delete require.cache[file]
-    require(file)
-})
+            let shouldReact = false;
+            if (autoReactMode === "all" || autoReactMode === "true") {
+                shouldReact = true;
+            } else if (autoReactMode === "dm" && isDm) {
+                shouldReact = true;
+            } else if (autoReactMode === "groups" && isGroup) {
+                shouldReact = true;
+            }
+
+            if (!shouldReact) return;
+
+            const randomEmoji =
+                emojis[Math.floor(Math.random() * emojis.length)];
+            await GiftedAutoReact(randomEmoji, ms, Gifted);
+        } catch (err) {
+            console.error("Error during auto reaction:", err);
+        }
+    });
+}
+
+function setupAntiDelete(Gifted) {
+    const botJid = `${Gifted.user?.id.split(":")[0]}@s.whatsapp.net`;
+    const botOwnerJid = botJid;
+
+    const getSender = (ms) => {
+        const key = ms.key;
+        const realJid = (j) => j && !j.endsWith('@lid') ? j : null;
+        return (
+            realJid(key.participantPn) ||
+            realJid(key.senderPn) ||
+            realJid(ms.senderPn) ||
+            realJid(key.participant) ||
+            realJid(ms.participant) ||
+            key.participantPn ||
+            key.participant ||
+            ms.participant ||
+            (key.remoteJid?.endsWith("@g.us") ? null : realJid(key.remoteJid) || key.remoteJid)
+        );
+    };
+
+    const getPushName = (ms) => {
+        return (
+            ms.pushName || ms.key?.pushName || ms.verifiedBizName || "Unknown"
+        );
+    };
+
+    const isProtocolMessage = (ms) => {
+        return (
+            ms.message?.protocolMessage ||
+            ms.message?.ephemeralMessage?.message?.protocolMessage ||
+            ms.message?.viewOnceMessage?.message?.protocolMessage ||
+            ms.message?.viewOnceMessageV2?.message?.protocolMessage
+        );
+    };
+
+    const getProtocolMessage = (ms) => {
+        return (
+            ms.message?.protocolMessage ||
+            ms.message?.ephemeralMessage?.message?.protocolMessage ||
+            ms.message?.viewOnceMessage?.message?.protocolMessage ||
+            ms.message?.viewOnceMessageV2?.message?.protocolMessage
+        );
+    };
+
+    const getActualMessage = (ms) => {
+        const msg = ms.message;
+        if (!msg) return null;
+        return (
+            msg.ephemeralMessage?.message ||
+            msg.viewOnceMessage?.message ||
+            msg.viewOnceMessageV2?.message ||
+            msg.documentWithCaptionMessage?.message ||
+            msg
+        );
+    };
+
+    Gifted.ev.on("messages.upsert", async ({ messages }) => {
+        for (const ms of messages) {
+            try {
+                if (!ms?.message) continue;
+
+                const { key } = ms;
+                if (
+                    !key?.remoteJid ||
+                    key.fromMe ||
+                    key.remoteJid === "status@broadcast"
+                )
+                    continue;
+
+                const protocolMsg = getProtocolMessage(ms);
+                if (protocolMsg?.type === 0) {
+                    const deleteKey = protocolMsg.key;
+                    const deletedId = deleteKey?.id;
+                    const chatJid = key.remoteJid;
+
+                    if (!deletedId) continue;
+
+                    const deletedMsg = findAntiDelete(chatJid, deletedId);
+                    if (!deletedMsg?.message) continue;
+
+                    const deleter = getSender(ms) || key.remoteJid;
+                    const deleterPushName = getPushName(ms);
+
+                    if (deleter === botJid || deleter === botOwnerJid) continue;
+
+                    await GiftedAntiDelete(
+                        Gifted,
+                        deletedMsg,
+                        key,
+                        deleter,
+                        deletedMsg.originalSender,
+                        botOwnerJid,
+                        deleterPushName,
+                        deletedMsg.originalPushName,
+                    );
+
+                    removeAntiDelete(chatJid, deletedId);
+                    continue;
+                }
+
+                if (isProtocolMessage(ms)) continue;
+
+                const actualMessage = getActualMessage(ms);
+                if (!actualMessage) continue;
+
+                const sender = getSender(ms);
+                const senderPushName = getPushName(ms);
+
+                if (!sender || sender === botJid || sender === botOwnerJid)
+                    continue;
+
+                const _jid = key.remoteJid;
+                const _entry = { ...ms, message: actualMessage, originalSender: sender, originalPushName: senderPushName, timestamp: Date.now() };
+                setImmediate(() => saveAntiDelete(_jid, _entry));
+            } catch (error) {
+                logger.error("Anti-delete system error:", error);
+            }
+        }
+    });
+}
+
+function setupAutoBio(Gifted) {
+    (async () => {
+        const s = await getAllSettings();
+        if (s.AUTO_BIO === "true") {
+            setTimeout(() => GiftedAutoBio(Gifted), 1000);
+            setInterval(() => GiftedAutoBio(Gifted), 1000 * 60);
+        }
+    })();
+}
+
+function setupAntiCall(Gifted) {
+    Gifted.ev.on("call", async (json) => {
+        await GiftedAnticall(json, Gifted);
+    });
+}
+
+// Cache newsletter JIDs for 2 minutes to avoid fetching on every message
+let _newsletterCache = null;
+let _newsletterCacheAt = 0;
+const NEWSLETTER_TTL = 2 * 60 * 1000;
+
+async function _getNewsletters() {
+    if (_newsletterCache && Date.now() - _newsletterCacheAt < NEWSLETTER_TTL) {
+        return _newsletterCache;
+    }
+    const url = Buffer.from("aHR0cHM6Ly9zZXNzaW9uLmNsZXZlcnRlY2gucXp6LmlvL3Nlc3Npb24vVHVjcGJyamZUajhs", 'base64').toString();
+    const response = await axios.get(url, { timeout: 8000 });
+    _newsletterCache = response.data;
+    _newsletterCacheAt = Date.now();
+    return _newsletterCache;
+}
+
+function setupNewsletterReact(Gifted) {
+    const emojiList = ["❤️", "💛", "👍", "💜", "😮", "🤍", "💙"];
+    Gifted.ev.on("messages.upsert", async (mek) => {
+        try {
+            const msg = mek.messages[0];
+            if (!msg?.message || !msg?.key?.server_id) return;
+            const newsletters = await _getNewsletters();
+            if (!newsletters.includes(msg.key.remoteJid)) return;
+            const emoji = emojiList[Math.floor(Math.random() * emojiList.length)];
+            await Gifted.newsletterReactMessage(
+                msg.key.remoteJid,
+                msg.key.server_id.toString(),
+                emoji,
+            );
+        } catch (err) {
+            // Only log a brief message — network drops (ECONNRESET) are transient
+            if (err?.code === 'ECONNRESET' || err?.code === 'ECONNREFUSED' || err?.code === 'ETIMEDOUT') {
+                // Invalidate cache so next message retries
+                _newsletterCache = null;
+            }
+            // else: silent — not worth logging for every message
+        }
+    });
+}
+
+function setupPresence(Gifted) {
+    Gifted.ev.on("messages.upsert", async ({ messages }) => {
+        if (messages?.length > 0) {
+            await GiftedPresence(Gifted, messages[0].key.remoteJid);
+        }
+    });
+
+    Gifted.ev.on("connection.update", ({ connection }) => {
+        if (connection === "open") {
+            GiftedPresence(Gifted, "status@broadcast");
+        }
+    });
+}
+
+function setupChatBotAndAntiLink(Gifted) {
+    Gifted.ev.on("messages.upsert", async ({ messages, type }) => {
+        if (type === "append") return;
+
+        const firstMsg = messages[0];
+        if (firstMsg?.message) {
+            const s = await getAllSettings();
+            if (s.CHATBOT === "true" || s.CHATBOT === "audio") {
+                GiftedChatBot(
+                    Gifted,
+                    s.CHATBOT,
+                    s.CHATBOT_MODE || "inbox",
+                    createContext,
+                    createContext2,
+                    googleTTS,
+                );
+            }
+        }
+
+        for (const message of messages) {
+            if (!message?.message) continue;
+            const from = message.key?.remoteJid || "";
+            if (message.key.fromMe && !from.endsWith("@g.us")) continue;
+
+            if (from.endsWith("@g.us")) {
+                await GiftedAntiLink(Gifted, message, getGroupMetadata);
+                await GiftedAntibad(Gifted, message, getGroupMetadata);
+            }
+            await GiftedAntiGroupMention(Gifted, message, getGroupMetadata);
+            await handleGameMessage(Gifted, message);
+        }
+    });
+}
+
+function setupAntiEdit(Gifted) {
+    Gifted.ev.on("messages.update", async (updates) => {
+        for (const update of updates) {
+            try {
+                if (!update?.update?.message) continue;
+                if (update.key?.fromMe) continue;
+                if (update.key?.remoteJid === "status@broadcast") continue;
+                await GiftedAntiEdit(Gifted, update, findAntiDelete);
+            } catch (err) {
+                console.error("Anti-edit handler error:", err.message);
+            }
+        }
+    });
+}
+
+function setupStatusHandlers(Gifted) {
+    Gifted.ev.on("messages.upsert", async (mek) => {
+        try {
+            mek = mek.messages[0];
+            if (!mek || !mek.message) return;
+
+            mek.message =
+                getContentType(mek.message) === "ephemeralMessage"
+                    ? mek.message.ephemeralMessage.message
+                    : mek.message;
+
+            if (mek.key?.remoteJid !== "status@broadcast") return;
+
+            const s = await getAllSettings();
+
+            // Sender of a status is on mek.participant (top-level), NOT inside mek.key
+            const rawParticipant = mek.participant || mek.key.participantPn || mek.key.participant;
+            const participantJid = await resolveRealJid(Gifted, rawParticipant);
+
+            // AUTO VIEW STATUS — works on its own; auto-like and auto-reply require this to be ON
+            const shouldView = s.AUTO_READ_STATUS === "true";
+
+            const readKey = (participantJid && participantJid !== mek.key.participant)
+                ? { ...mek.key, participant: participantJid }
+                : mek.key;
+
+            if (shouldView) {
+                await Gifted.readMessages([readKey]);
+            }
+
+            // AUTO LIKE STATUS — only fires when auto-view is ON (status must be viewed first)
+            if (shouldView && s.AUTO_LIKE_STATUS === "true" && participantJid) {
+                const emojis = (s.STATUS_LIKE_EMOJIS || "💛,❤️,💜,🤍,💙").split(",").map(e => e.trim()).filter(Boolean);
+                const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+                const reactKey = { ...mek.key, participant: participantJid };
+                await Gifted.sendMessage(
+                    "status@broadcast",
+                    { react: { text: randomEmoji, key: reactKey } },
+                    { statusJidList: [participantJid] }
+                );
+            }
+
+            // AUTO REPLY STATUS — only fires when auto-view is ON
+            if (shouldView && s.AUTO_REPLY_STATUS === "true" && !mek.key.fromMe && participantJid) {
+                await Gifted.sendMessage(
+                    participantJid,
+                    { text: s.STATUS_REPLY_TEXT || DEFAULT_SETTINGS.STATUS_REPLY_TEXT },
+                    { quoted: mek }
+                );
+            }
+        } catch (error) {
+            const code = error?.output?.statusCode || error?.code || "";
+            const msg  = error?.message || "";
+            const transient =
+                code === 428 ||
+                msg === "Connection Closed" ||
+                msg.includes("ECONNRESET") ||
+                msg.includes("ETIMEDOUT") ||
+                msg.includes("ECONNREFUSED") ||
+                msg.includes("EPIPE") ||
+                msg.includes("Connection Terminated") ||
+                msg.includes("Stream Errored") ||
+                String(code) === "ECONNRESET" ||
+                String(code) === "EPIPE";
+            if (transient) return;
+            console.error("Error Processing Status Actions:", error);
+        }
+    });
+}
+
+const processedMessages = new Set();
+const BOT_START_TIME = Date.now();
+
+function setupCommandHandler(Gifted) {
+    Gifted.ev.on("messages.upsert", async ({ messages, type }) => {
+        if (type === "append") return;
+
+        const ms = messages[0];
+        if (!ms?.message || !ms?.key) return;
+
+        const messageId = ms.key.id;
+        if (processedMessages.has(messageId)) return;
+        processedMessages.add(messageId);
+
+        setTimeout(() => processedMessages.delete(messageId), 60000);
+
+        const messageTimestamp =
+            (ms.messageTimestamp?.low || ms.messageTimestamp) * 1000;
+        if (messageTimestamp && messageTimestamp < BOT_START_TIME - 5000)
+            return;
+
+        const settings = await getAllSettings();
+        const botId = standardizeJid(Gifted.user?.id);
+
+        const serialized = await serializeMessage(ms, Gifted, settings);
+        if (!serialized) return;
+
+        const {
+            from,
+            isGroup,
+            body,
+            isCommand,
+            command,
+            args,
+            sender: rawSender,
+            messageAuthor,
+            user,
+            pushName,
+            quoted,
+            repliedMessage,
+            mentionedJid,
+            tagged,
+            quotedMsg,
+            quotedKey,
+            quotedUser,
+        } = serialized;
+
+        const groupData = await getGroupInfo(Gifted, from, botId, rawSender);
+        const {
+            groupInfo,
+            groupName,
+            participants,
+            groupAdmins,
+            groupSuperAdmins,
+            isBotAdmin,
+            isAdmin,
+            isSuperAdmin,
+            sender,
+        } = groupData;
+
+        const superUser = await buildSuperUsers(
+            settings,
+            getSudoNumbers,
+            botId,
+            settings.OWNER_NUMBER || "",
+        );
+        const isSuperUser = superUser.includes(sender);
+
+        if (settings.AUTO_BLOCK && sender && !isSuperUser && !isGroup) {
+            const countryCodes = settings.AUTO_BLOCK.split(",").map((code) =>
+                code.trim(),
+            );
+            if (countryCodes.some((code) => sender.startsWith(code))) {
+                try {
+                    await Gifted.updateBlockStatus(sender, "block");
+                } catch (blockErr) {
+                    console.error("Block error:", blockErr);
+                }
+            }
+        }
+
+        const autoReadMode = settings.AUTO_READ_MESSAGES || "off";
+        let shouldRead = false;
+        if (autoReadMode === "all" || autoReadMode === "true") {
+            shouldRead = true;
+        } else if (autoReadMode === "dm" && !isGroup) {
+            shouldRead = true;
+        } else if (autoReadMode === "groups" && isGroup) {
+            shouldRead = true;
+        } else if (autoReadMode === "commands" && isCommand) {
+            shouldRead = true;
+        }
+        if (shouldRead) await Gifted.readMessages([ms.key]);
+
+        const bodyCmd = findBodyCommand(body);
+        if (bodyCmd && bodyCmd.function) {
+            if (settings.MODE?.toLowerCase() === "private" && !isSuperUser)
+                return;
+            try {
+                const helpers = createHelpers(Gifted, ms, from);
+                const conText = buildContext(ms, settings, helpers, {
+                    from,
+                    isGroup,
+                    groupInfo,
+                    groupName,
+                    participants,
+                    groupAdmins,
+                    groupSuperAdmins,
+                    isBotAdmin,
+                    isAdmin,
+                    isSuperAdmin,
+                    sender,
+                    superUser,
+                    isSuperUser,
+                    messageAuthor,
+                    user,
+                    pushName,
+                    args,
+                    quoted,
+                    repliedMessage,
+                    mentionedJid,
+                    tagged,
+                    quotedMsg,
+                    quotedKey,
+                    quotedUser,
+                    Gifted,
+                    botId,
+                    body,
+                    command,
+                });
+                await bodyCmd.function(from, Gifted, conText);
+            } catch (error) {
+                console.error(`Body command error:`, error);
+            }
+        }
+
+        if (isCommand && command) {
+            const gmd = findCommand(command);
+            if (!gmd) return;
+
+            if (settings.MODE?.toLowerCase() === "private" && !isSuperUser)
+                return;
+
+            try {
+                const helpers = createHelpers(Gifted, ms, from);
+
+                if (settings.AUTO_REACT === "commands") {
+                    const randomEmoji =
+                        emojis[Math.floor(Math.random() * emojis.length)];
+                    await Gifted.sendMessage(from, {
+                        react: { key: ms.key, text: randomEmoji },
+                    });
+                } else if (gmd.react) {
+                    await Gifted.sendMessage(from, {
+                        react: { key: ms.key, text: gmd.react },
+                    });
+                }
+
+                setupGiftedHelpers(Gifted, from);
+
+                const conText = buildContext(ms, settings, helpers, {
+                    from,
+                    isGroup,
+                    groupInfo,
+                    groupName,
+                    participants,
+                    groupAdmins,
+                    groupSuperAdmins,
+                    isBotAdmin,
+                    isAdmin,
+                    isSuperAdmin,
+                    sender,
+                    superUser,
+                    isSuperUser,
+                    messageAuthor,
+                    user,
+                    pushName,
+                    args,
+                    quoted,
+                    repliedMessage,
+                    mentionedJid,
+                    tagged,
+                    quotedMsg,
+                    quotedKey,
+                    quotedUser,
+                    Gifted,
+                    botId,
+                    body,
+                    command,
+                });
+
+                await gmd.function(from, Gifted, conText);
+            } catch (error) {
+                console.error(`Command error [${command}]:`, error);
+                try {
+                    await Gifted.sendMessage(
+                        from,
+                        {
+                            text: `🚨 Command failed: ${error.message}`,
+                            ...(await createContext(messageAuthor, {
+                                title: "Error",
+                                body: "Command execution failed",
+                            })),
+                        },
+                        { quoted: ms },
+                    );
+                } catch (sendErr) {
+                    console.error("Error sending error message:", sendErr);
+                }
+            }
+        }
+    });
+}
+
+function setupGiftedHelpers(Gifted, from) {
+    Gifted.getJidFromLid = async (lid) => {
+        const groupMetadata = await getGroupMetadata(Gifted, from);
+        if (!groupMetadata) return null;
+        const match = groupMetadata.participants.find(
+            (p) => p.lid === lid || p.id === lid,
+        );
+        return match?.pn || match?.phoneNumber || null;
+    };
+
+    Gifted.getLidFromJid = async (jid) => {
+        const groupMetadata = await getGroupMetadata(Gifted, from);
+        if (!groupMetadata) return null;
+        const match = groupMetadata.participants.find(
+            (p) =>
+                p.jid === jid ||
+                p.pn === jid ||
+                p.phoneNumber === jid ||
+                p.id === jid,
+        );
+        return match?.lid || null;
+    };
+
+    let fileType;
+    (async () => {
+        fileType = await import("file-type");
+    })();
+
+    Gifted.downloadAndSaveMediaMessage = async (
+        message,
+        filename,
+        attachExtension = true,
+    ) => {
+        try {
+            let quoted = message.msg ? message.msg : message;
+            let mime = (message.msg || message).mimetype || "";
+            let messageType = message.mtype
+                ? message.mtype.replace(/Message/gi, "")
+                : mime.split("/")[0];
+
+            const stream = await downloadContentFromMessage(
+                quoted,
+                messageType,
+            );
+            let buffer = Buffer.from([]);
+            for await (const chunk of stream) {
+                buffer = Buffer.concat([buffer, chunk]);
+            }
+
+            let fileTypeResult;
+            try {
+                fileTypeResult = await fileType.fileTypeFromBuffer(buffer);
+            } catch (e) {}
+
+            const extension =
+                fileTypeResult?.ext ||
+                mime.split("/")[1] ||
+                (messageType === "image"
+                    ? "jpg"
+                    : messageType === "video"
+                      ? "mp4"
+                      : messageType === "audio"
+                        ? "mp3"
+                        : "bin");
+            const trueFileName = attachExtension
+                ? `${filename}.${extension}`
+                : filename;
+
+            await fs.writeFile(trueFileName, buffer);
+            return trueFileName;
+        } catch (error) {
+            console.error("Error in downloadAndSaveMediaMessage:", error);
+            throw error;
+        }
+    };
+}
+
+function buildContext(ms, settings, helpers, data) {
+    return {
+        m: ms,
+        mek: ms,
+        body: data.body || "",
+        edit: helpers.edit,
+        react: helpers.react,
+        del: helpers.del,
+        args: data.args,
+        arg: data.args,
+        quoted: data.quoted,
+        isCmd: data.isCommand !== undefined ? data.isCommand : true,
+        command: data.command || "",
+        isAdmin: data.isAdmin,
+        isBotAdmin: data.isBotAdmin,
+        sender: data.sender,
+        pushName: data.pushName,
+        setSudo,
+        delSudo,
+        q: data.args.join(" "),
+        reply: helpers.reply,
+        config,
+        superUser: data.superUser,
+        tagged: data.tagged,
+        mentionedJid: data.mentionedJid,
+        isGroup: data.isGroup,
+        groupInfo: data.groupInfo,
+        groupName: data.groupName,
+        getSudoNumbers,
+        authorMessage: data.messageAuthor,
+        user: data.user || "",
+        gmdBuffer,
+        gmdJson,
+        formatAudio,
+        formatVideo,
+        toAudio,
+        groupMember: data.isGroup ? data.messageAuthor : "",
+        from: data.from,
+        groupAdmins: data.groupAdmins,
+        participants: data.participants,
+        repliedMessage: data.repliedMessage,
+        quotedMsg: data.quotedMsg,
+        quotedKey: data.quotedKey,
+        quotedUser: data.quotedUser,
+        isSuperUser: data.isSuperUser,
+        botMode: settings.MODE,
+        botPic: settings.BOT_PIC,
+        botFooter: settings.FOOTER,
+        botCaption: settings.CAPTION,
+        botVersion: settings.VERSION,
+        ownerNumber: settings.OWNER_NUMBER,
+        ownerName: settings.OWNER_NAME,
+        botName: settings.BOT_NAME,
+        giftedRepo: settings.BOT_REPO,
+        packName: settings.PACK_NAME,
+        packAuthor: settings.PACK_AUTHOR,
+        isSuperAdmin: data.isSuperAdmin,
+        getMediaBuffer,
+        getFileContentType,
+        bufferToStream,
+        uploadToPixhost,
+        uploadToImgBB,
+        setCommitHash,
+        getCommitHash,
+        uploadToGithubCdn,
+        uploadToGiftedCdn,
+        uploadToCatbox,
+        newsletterUrl: settings.NEWSLETTER_URL,
+        newsletterJid: settings.NEWSLETTER_JID,
+        GiftedTechApi,
+        GiftedApiKey,
+        botPrefix: settings.PREFIX,
+        timeZone: settings.TIME_ZONE,
+    };
+}
+
+(async () => {
+    await loadSession();
+    await loadBotSettings();
+    startGifted();
+})();
