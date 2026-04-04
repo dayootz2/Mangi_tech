@@ -77,7 +77,7 @@ gmd(
     react: "🎥",
     description: "Download Video from url",
   },
-  async (fromLoftxmdtech, conText) => {
+  async (from, Loftxmd, conText) => {
     const { q, mek, reply, react, sender, botFooter, gmdBuffer, formatVideo } =
       conText;
 
@@ -230,7 +230,7 @@ gmd(
       const dateNow = Date.now();
       const buttonId = `play_${firstVideo.id}_${dateNow}`;
       
-      await sendButtons(Mangixmd, from, {
+      await sendButtons(Loftxmd, from, {
         title: `${botName} 𝐒𝐎𝐍𝐆 𝐃𝐎𝐖𝐍𝐋𝐎𝐀𝐃𝐄𝐑`,
         text: `⿻ *Title:* ${firstVideo.title}\n⿻ *Duration:* ${firstVideo.timestamp}\n\n*Select download format:*`,
         footer: botFooter,
@@ -317,4 +317,162 @@ gmd(
 );
 
 gmd(
-xmd
+  {
+    pattern: "video",
+    aliases: ["ytmp4doc", "mp4", "ytmp4", "dlmp4"],
+    category: "downloader",
+    react: "🎥",
+    description: "Download Video from Youtube",
+  },
+  async (from, Loftxmd, conText) => {
+    const {
+      q,
+      reply,
+      react,
+      botPic,
+      botName,
+      botFooter,
+      gmdBuffer,
+      formatVideo,
+    } = conText;
+
+    if (!q) {
+      await react("❌");
+      return reply("Please provide a video name");
+    }
+
+    try {
+      const searchResponse = await yts(q);
+
+      if (!searchResponse.videos.length) {
+        return reply("No video found for your query.");
+      }
+
+      const firstVideo = searchResponse.videos[0];
+      const videoUrl = firstVideo.url;
+      
+      await react("🔍");
+      const endpointResult = await queryAPI(videoUrl, videoEndpoints, conText);
+      
+      if (!endpointResult.success) {
+        await react("❌");
+        return reply("All download services are currently unavailable. Please try again later.");
+      }
+      
+      let buffer = await gmdBuffer(endpointResult.download_url);
+
+      // If the winning endpoint's download URL failed or returned a tiny error body, retry the rest
+      if (!isValidBuffer(buffer)) {
+        const remaining = videoEndpoints.filter(e => e !== endpointResult.endpoint);
+        const retry = await queryAPI(videoUrl, remaining, conText);
+        if (retry.success) buffer = await gmdBuffer(retry.download_url);
+      }
+
+      if (!isValidBuffer(buffer)) {
+        await react("❌");
+        return reply("Failed to download video. Please try again later.");
+      }
+
+      const sizeMB = buffer.length / (1024 * 1024);
+
+      // Large file — skip buttons, send directly as document
+      if (sizeMB > 100) {
+        await react("📄");
+        const convertedBuffer = await formatVideo(buffer);
+        await Loftxmd.sendMessage(from, {
+          document: convertedBuffer,
+          mimetype: "video/mp4",
+          fileName: `${firstVideo.title}.mp4`.replace(/[^\w\s.-]/gi, ""),
+          caption: `⿻ *Title:* ${firstVideo.title}\n⿻ *Duration:* ${firstVideo.timestamp}\n\n_File too large for video streaming — sent as document_`,
+        });
+        return;
+      }
+
+      if (sizeMB > 20) {
+        await reply("File is large, processing might take a while...");
+      }
+
+      const dateNow = Date.now();
+      const buttonId = `video_${firstVideo.id}_${dateNow}`;
+      
+      await sendButtons(Loftxmd, from, {
+        title: `${botName} 𝐕𝐈𝐃𝐄𝐎 𝐃𝐎𝐖𝐍𝐋𝐎𝐀𝐃𝐄𝐑`,
+        text: `⿻ *Title:* ${firstVideo.title}\n⿻ *Duration:* ${firstVideo.timestamp}\n\n*Select download format:*`,
+        footer: botFooter,
+        image: { url: firstVideo.thumbnail || botPic },
+        buttons: [
+          { id: `vid_${buttonId}`, text: "Video 🎥" },
+          { id: `doc_${buttonId}`, text: "Video Document 📄" },
+          {
+            name: "cta_url",
+            buttonParamsJson: JSON.stringify({
+              display_text: "Watch on Youtube",
+              url: firstVideo.url,
+            }),
+          },
+        ],
+      });
+
+      const handleResponse = async (event) => {
+        const messageData = event.messages[0];
+        if (!messageData.message) return;
+
+        const selectedButtonId = extractButtonId(messageData.message);
+        if (!selectedButtonId) return;
+
+        const isFromSameChat = messageData.key?.remoteJid === from;
+        if (!isFromSameChat || !selectedButtonId.includes(dateNow.toString())) return;
+
+        await react("⬇️");
+
+        try {
+          if (selectedButtonId.startsWith('vid_')) {
+            const formattedVideo = await formatVideo(buffer);
+            await Loftxmd.sendMessage(
+              from,
+              {
+                video: formattedVideo,
+                mimetype: "video/mp4",
+                fileName: `${firstVideo.title}.mp4`.replace(/[^\w\s.-]/gi, ""),
+                caption: `🎥 ${firstVideo.title}`,
+              },
+              { quoted: messageData }
+            );
+          } 
+          else if (selectedButtonId.startsWith('doc_')) {
+            await Loftxmd.sendMessage(
+              from,
+              {
+                document: buffer,
+                mimetype: "video/mp4",
+                fileName: `${firstVideo.title}.mp4`.replace(/[^\w\s.-]/gi, ""),
+                caption: `📄 ${firstVideo.title}`,
+              },
+              { quoted: messageData }
+            );
+          } 
+          else {
+            return;
+          }
+
+          await react("✅");
+        } catch (error) {
+          console.error("Error sending media:", error);
+          await react("❌");
+          await Loftxmd.sendMessage(from, { text: "Failed to send media. Please try again." }, { quoted: messageData });
+        }
+      };
+
+      Loftxmd.ev.on("messages.upsert", handleResponse);
+
+      setTimeout(() => {
+        Loftxmd.ev.off("messages.upsert", handleResponse);
+      }, 300000);
+      
+    } catch (error) {
+      console.error("Error during download process:", error);
+      await react("❌");
+      return reply("Oops! Something went wrong. Please try again.");
+    }
+  },
+);
