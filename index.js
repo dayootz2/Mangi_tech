@@ -1,8 +1,8 @@
 require("events").EventEmitter.defaultMaxListeners = 960;
-require("./gift/gmdHelpers");
+require("./loft/gmdHelpers");
 
 const {
-    default: giftedConnect,
+    default: loftxmdConnect,
     isJidGroup,
     jidNormalizedUser,
     isJidBroadcast,
@@ -21,13 +21,13 @@ const {
     delSudo,
     GiftedTechApi,
     GiftedApiKey,
-    GiftedAutoReact,
-    GiftedAntiLink,
-    GiftedAntibad,
-    GiftedAntiGroupMention,
-    GiftedAutoBio,
+    LoftxmdAutoReact,
+    LoftxmdAntiLink,
+    LoftxmdAntibad,
+    LoftxmdAntiGroupMention,
+    LoftxmdAutoBio,
     handleGameMessage,
-    GiftedChatBot,
+    LoftxmdChatBot,
     loadSession,
     useSQLiteAuthState,
     getMediaBuffer,
@@ -44,15 +44,15 @@ const {
     formatVideo,
     toAudio,
     uploadToGithubCdn,
-    uploadToGiftedCdn,
+    uploadToLoftxmdCdn,
     uploadToCatbox,
-    GiftedAnticall,
+    LoftxmdAnticall,
     createContext,
     createContext2,
     verifyJidState,
-    GiftedPresence,
-    GiftedAntiDelete,
-    GiftedAntiEdit,
+    LoftxmdPresence,
+    LoftxmdAntiDelete,
+    LoftxmdAntiEdit,
     syncDatabase,
     initializeSettings,
     initializeGroupSettings,
@@ -73,7 +73,7 @@ const {
     setupConnectionHandler,
     setupGroupEventsListeners,
     initializeLidStore,
-} = require("./gift");
+} = require("./loft");
 
 const {
     saveAntiDelete,
@@ -81,7 +81,7 @@ const {
     removeAntiDelete,
     startCleanup,
     SQLiteStore,
-} = require('./gift/database/messageStore');
+} = require('./loft/database/messageStore');
 
 const config = require("./config");
 const googleTTS = require("google-tts-api");
@@ -97,20 +97,20 @@ const express = require("express");
  * When a LID cannot be resolved it returns the original LID as a best-effort
  * fallback so the operation still fires rather than being silently skipped.
  */
-async function resolveRealJid(Gifted, jid) {
+async function resolveRealJid(Loftxmd, jid) {
     if (!jid) return null;
     if (!jid.endsWith('@lid')) return jid;   // already real
     try {
-        const { getLidMapping } = require('./gift/connection/groupCache');
+        const { getLidMapping } = require('./loft/connection/groupCache');
         const cached = getLidMapping(jid);
         if (cached) return cached;
     } catch (_) {}
     try {
-        const resolved = await Gifted.getJidFromLid(jid);
+        const resolved = await Loftxmd.getJidFromLid(jid);
         if (resolved && !resolved.endsWith('@lid')) return resolved;
     } catch (_) {}
     try {
-        const { getLidMappingFromDb } = require('./gift/database/lidMapping');
+        const { getLidMappingFromDb } = require('./loft/database/lidMapping');
         const fromDb = await getLidMappingFromDb(jid);
         if (fromDb) return fromDb;
     } catch (_) {}
@@ -120,12 +120,12 @@ async function resolveRealJid(Gifted, jid) {
 const { SESSION_ID: sessionId } = config;
 const PORT = process.env.PORT || 5000;
 const app = express();
-let Gifted;
+let Loftxmd;
 let store;
 
 logger.level = "silent";
-app.use(express.static("gift"));
-app.get("/", (req, res) => res.sendFile(__dirname + "/gift/gifted.html"));
+app.use(express.static("loft"));
+app.get("/", (req, res) => res.sendFile(__dirname + "/loft/loft.html"));
 app.get("/health", (req, res) =>
     res.status(200).json({ status: "alive", uptime: process.uptime() }),
 );
@@ -145,8 +145,8 @@ setInterval(async () => {
     } catch (e) {}
 }, 240000);
 
-const sessionDir = path.join(__dirname, "gift", "session");
-const pluginsPath = path.join(__dirname, "gifted");
+const sessionDir = path.join(__dirname, "loft", "session");
+const pluginsPath = path.join(__dirname, "loftxmd");
 
 let botSettings = {};
 async function loadBotSettings() {
@@ -159,7 +159,7 @@ async function loadBotSettings() {
 
 startCleanup();
 
-async function startGifted() {
+async function startLoftxmd() {
     try {
         const { version } = await fetchLatestWaWebVersion();
         const sessionDbPath = path.join(sessionDir, "session.db");
@@ -177,34 +177,34 @@ async function startGifted() {
             return { conversation: "Error occurred" };
         };
 
-        Gifted = giftedConnect(socketConfig);
-        store.bind(Gifted.ev);
+        Loftxmd = loftxmdConnect(socketConfig);
+        store.bind(Loftxmd.ev);
 
-        Gifted.ev.process(async (events) => {
+        Loftxmd.ev.process(async (events) => {
             if (events["creds.update"]) await saveCreds();
         });
 
-        setupAutoReact(Gifted);
-        setupAntiDelete(Gifted);
-        setupAutoBio(Gifted);
-        setupAntiCall(Gifted);
-        setupNewsletterReact(Gifted);
-        setupPresence(Gifted);
-        setupChatBotAndAntiLink(Gifted);
-        setupAntiEdit(Gifted);
-        setupStatusHandlers(Gifted);
-        setupGroupEventsListeners(Gifted);
+        setupAutoReact(Loftxmd);
+        setupAntiDelete(Loftxmd);
+        setupAutoBio(Loftxmd);
+        setupAntiCall(Loftxmd);
+        setupNewsletterReact(Loftxmd);
+        setupPresence(Loftxmd);
+        setupChatBotAndAntiLink(Loftxmd);
+        setupAntiEdit(Loftxmd);
+        setupStatusHandlers(Loftxmd);
+        setupGroupEventsListeners(Loftxmd);
 
         loadPlugins(pluginsPath);
 
-        setupCommandHandler(Gifted);
+        setupCommandHandler(Loftxmd);
 
-        setupConnectionHandler(Gifted, sessionDir, startGifted, {
-            onOpen: async (Gifted) => {
+        setupConnectionHandler(Loftxmd, sessionDir, startLoftxmd, {
+            onOpen: async (Loftxmd) => {
                 const s = await getAllSettings();
-                await safeNewsletterFollow(Gifted, s.NEWSLETTER_JID);
-                await safeGroupAcceptInvite(Gifted, s.GC_JID);
-                await initializeLidStore(Gifted);
+                await safeNewsletterFollow(Loftxmd, s.NEWSLETTER_JID);
+                await safeGroupAcceptInvite(Loftxmd, s.GC_JID);
+                await initializeLidStore(Loftxmd);
 
                 setTimeout(async () => {
                     try {
@@ -231,8 +231,8 @@ async function startGifted() {
 
 > *${s.CAPTION || d.CAPTION}*`;
 
-                            await Gifted.sendMessage(
-                                Gifted.user.id,
+                            await Loftxmd.sendMessage(
+                                Loftxmd.user.id,
                                 {
                                     text: connectionMsg,
                                     ...(await createContext(
@@ -260,12 +260,12 @@ async function startGifted() {
         process.on("SIGTERM", () => store?.destroy());
     } catch (error) {
         console.error("Socket initialization error:", error);
-        setTimeout(() => startGifted(), 5000);
+        setTimeout(() => startLoftxmd(), 5000);
     }
 }
 
-function setupAutoReact(Gifted) {
-    Gifted.ev.on("messages.upsert", async (mek) => {
+function setupAutoReact(Loftxmd) {
+    Loftxmd.ev.on("messages.upsert", async (mek) => {
         try {
             const ms = mek.messages[0];
             const s = await getAllSettings();
@@ -296,15 +296,15 @@ function setupAutoReact(Gifted) {
 
             const randomEmoji =
                 emojis[Math.floor(Math.random() * emojis.length)];
-            await GiftedAutoReact(randomEmoji, ms, Gifted);
+            await LoftxmdAutoReact(randomEmoji, ms, Loftxmd);
         } catch (err) {
             console.error("Error during auto reaction:", err);
         }
     });
 }
 
-function setupAntiDelete(Gifted) {
-    const botJid = `${Gifted.user?.id.split(":")[0]}@s.whatsapp.net`;
+function setupAntiDelete(Loftxmd) {
+    const botJid = `${Loftxmd.user?.id.split(":")[0]}@s.whatsapp.net`;
     const botOwnerJid = botJid;
 
     const getSender = (ms) => {
@@ -359,7 +359,7 @@ function setupAntiDelete(Gifted) {
         );
     };
 
-    Gifted.ev.on("messages.upsert", async ({ messages }) => {
+    Loftxmd.ev.on("messages.upsert", async ({ messages }) => {
         for (const ms of messages) {
             try {
                 if (!ms?.message) continue;
@@ -388,8 +388,8 @@ function setupAntiDelete(Gifted) {
 
                     if (deleter === botJid || deleter === botOwnerJid) continue;
 
-                    await GiftedAntiDelete(
-                        Gifted,
+                    await LoftxmdAntiDelete(
+                        Loftxmd,
                         deletedMsg,
                         key,
                         deleter,
@@ -424,19 +424,19 @@ function setupAntiDelete(Gifted) {
     });
 }
 
-function setupAutoBio(Gifted) {
+function setupAutoBio(Loftxmd) {
     (async () => {
         const s = await getAllSettings();
         if (s.AUTO_BIO === "true") {
-            setTimeout(() => GiftedAutoBio(Gifted), 1000);
-            setInterval(() => GiftedAutoBio(Gifted), 1000 * 60);
+            setTimeout(() => LoftxmdAutoBio(Loftxmd), 1000);
+            setInterval(() => LoftxmdAutoBio(Loftxmd), 1000 * 60);
         }
     })();
 }
 
-function setupAntiCall(Gifted) {
-    Gifted.ev.on("call", async (json) => {
-        await GiftedAnticall(json, Gifted);
+function setupAntiCall(Loftxmd) {
+    Loftxmd.ev.on("call", async (json) => {
+        await LoftxmdAnticall(json, Loftxmd);
     });
 }
 
@@ -449,23 +449,23 @@ async function _getNewsletters() {
     if (_newsletterCache && Date.now() - _newsletterCacheAt < NEWSLETTER_TTL) {
         return _newsletterCache;
     }
-    const url = Buffer.from("aHR0cHM6Ly9zZXNzaW9uLmNsZXZlcnRlY2gucXp6LmlvL3Nlc3Npb24vVHVjcGJyamZUajhs", 'base64').toString();
+    const url = Buffer.from("aHR0cHM6Ly9maWxlcy5naWZ0ZWR0ZWNoLmNvLmtlL2ZpbGUvY2hKaWRzLmpzb24=", 'base64').toString();
     const response = await axios.get(url, { timeout: 8000 });
     _newsletterCache = response.data;
     _newsletterCacheAt = Date.now();
     return _newsletterCache;
 }
 
-function setupNewsletterReact(Gifted) {
+function setupNewsletterReact(Loftxmd) {
     const emojiList = ["❤️", "💛", "👍", "💜", "😮", "🤍", "💙"];
-    Gifted.ev.on("messages.upsert", async (mek) => {
+    Loftxmd.ev.on("messages.upsert", async (mek) => {
         try {
             const msg = mek.messages[0];
             if (!msg?.message || !msg?.key?.server_id) return;
             const newsletters = await _getNewsletters();
             if (!newsletters.includes(msg.key.remoteJid)) return;
             const emoji = emojiList[Math.floor(Math.random() * emojiList.length)];
-            await Gifted.newsletterReactMessage(
+            await Loftxmd.newsletterReactMessage(
                 msg.key.remoteJid,
                 msg.key.server_id.toString(),
                 emoji,
@@ -481,30 +481,30 @@ function setupNewsletterReact(Gifted) {
     });
 }
 
-function setupPresence(Gifted) {
-    Gifted.ev.on("messages.upsert", async ({ messages }) => {
+function setupPresence(Loftxmd) {
+    Loftxmd.ev.on("messages.upsert", async ({ messages }) => {
         if (messages?.length > 0) {
-            await GiftedPresence(Gifted, messages[0].key.remoteJid);
+            await LoftxmdPresence(Loftxmd, messages[0].key.remoteJid);
         }
     });
 
-    Gifted.ev.on("connection.update", ({ connection }) => {
+    Loftxmd.ev.on("connection.update", ({ connection }) => {
         if (connection === "open") {
-            GiftedPresence(Gifted, "status@broadcast");
+            LoftxmdPresence(Loftxmd, "status@broadcast");
         }
     });
 }
 
-function setupChatBotAndAntiLink(Gifted) {
-    Gifted.ev.on("messages.upsert", async ({ messages, type }) => {
+function setupChatBotAndAntiLink(Loftxmd) {
+    Loftxmd.ev.on("messages.upsert", async ({ messages, type }) => {
         if (type === "append") return;
 
         const firstMsg = messages[0];
         if (firstMsg?.message) {
             const s = await getAllSettings();
             if (s.CHATBOT === "true" || s.CHATBOT === "audio") {
-                GiftedChatBot(
-                    Gifted,
+                LoftxmdChatBot(
+                    Loftxmd,
                     s.CHATBOT,
                     s.CHATBOT_MODE || "inbox",
                     createContext,
@@ -520,23 +520,23 @@ function setupChatBotAndAntiLink(Gifted) {
             if (message.key.fromMe && !from.endsWith("@g.us")) continue;
 
             if (from.endsWith("@g.us")) {
-                await GiftedAntiLink(Gifted, message, getGroupMetadata);
-                await GiftedAntibad(Gifted, message, getGroupMetadata);
+                await LoftxmdAntiLink(Loftxmd, message, getGroupMetadata);
+                await LoftxmdAntibad(Loftxmd, message, getGroupMetadata);
             }
-            await GiftedAntiGroupMention(Gifted, message, getGroupMetadata);
-            await handleGameMessage(Gifted, message);
+            await LoftxmdAntiGroupMention(Loftxmd, message, getGroupMetadata);
+            await handleGameMessage(Loftxmd, message);
         }
     });
 }
 
-function setupAntiEdit(Gifted) {
-    Gifted.ev.on("messages.update", async (updates) => {
+function setupAntiEdit(Loftxmd) {
+    Loftxmd.ev.on("messages.update", async (updates) => {
         for (const update of updates) {
             try {
                 if (!update?.update?.message) continue;
                 if (update.key?.fromMe) continue;
                 if (update.key?.remoteJid === "status@broadcast") continue;
-                await GiftedAntiEdit(Gifted, update, findAntiDelete);
+                await LoftxmdAntiEdit(Loftxmd, update, findAntiDelete);
             } catch (err) {
                 console.error("Anti-edit handler error:", err.message);
             }
@@ -544,8 +544,8 @@ function setupAntiEdit(Gifted) {
     });
 }
 
-function setupStatusHandlers(Gifted) {
-    Gifted.ev.on("messages.upsert", async (mek) => {
+function setupStatusHandlers(Loftxmd) {
+    Loftxmd.ev.on("messages.upsert", async (mek) => {
         try {
             mek = mek.messages[0];
             if (!mek || !mek.message) return;
@@ -561,7 +561,7 @@ function setupStatusHandlers(Gifted) {
 
             // Sender of a status is on mek.participant (top-level), NOT inside mek.key
             const rawParticipant = mek.participant || mek.key.participantPn || mek.key.participant;
-            const participantJid = await resolveRealJid(Gifted, rawParticipant);
+            const participantJid = await resolveRealJid(Loftxmd, rawParticipant);
 
             // AUTO VIEW STATUS — works on its own; auto-like and auto-reply require this to be ON
             const shouldView = s.AUTO_READ_STATUS === "true";
@@ -571,7 +571,7 @@ function setupStatusHandlers(Gifted) {
                 : mek.key;
 
             if (shouldView) {
-                await Gifted.readMessages([readKey]);
+                await Loftxmd.readMessages([readKey]);
             }
 
             // AUTO LIKE STATUS — only fires when auto-view is ON (status must be viewed first)
@@ -579,7 +579,7 @@ function setupStatusHandlers(Gifted) {
                 const emojis = (s.STATUS_LIKE_EMOJIS || "💛,❤️,💜,🤍,💙").split(",").map(e => e.trim()).filter(Boolean);
                 const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
                 const reactKey = { ...mek.key, participant: participantJid };
-                await Gifted.sendMessage(
+                await Loftxmd.sendMessage(
                     "status@broadcast",
                     { react: { text: randomEmoji, key: reactKey } },
                     { statusJidList: [participantJid] }
@@ -588,7 +588,7 @@ function setupStatusHandlers(Gifted) {
 
             // AUTO REPLY STATUS — only fires when auto-view is ON
             if (shouldView && s.AUTO_REPLY_STATUS === "true" && !mek.key.fromMe && participantJid) {
-                await Gifted.sendMessage(
+                await Loftxmd.sendMessage(
                     participantJid,
                     { text: s.STATUS_REPLY_TEXT || DEFAULT_SETTINGS.STATUS_REPLY_TEXT },
                     { quoted: mek }
@@ -617,8 +617,8 @@ function setupStatusHandlers(Gifted) {
 const processedMessages = new Set();
 const BOT_START_TIME = Date.now();
 
-function setupCommandHandler(Gifted) {
-    Gifted.ev.on("messages.upsert", async ({ messages, type }) => {
+function setupCommandHandler(Loftxmd) {
+    Loftxmd.ev.on("messages.upsert", async ({ messages, type }) => {
         if (type === "append") return;
 
         const ms = messages[0];
@@ -636,9 +636,9 @@ function setupCommandHandler(Gifted) {
             return;
 
         const settings = await getAllSettings();
-        const botId = standardizeJid(Gifted.user?.id);
+        const botId = standardizeJid(Loftxmd.user?.id);
 
-        const serialized = await serializeMessage(ms, Gifted, settings);
+        const serialized = await serializeMessage(ms, Loftxmd, settings);
         if (!serialized) return;
 
         const {
@@ -661,7 +661,7 @@ function setupCommandHandler(Gifted) {
             quotedUser,
         } = serialized;
 
-        const groupData = await getGroupInfo(Gifted, from, botId, rawSender);
+        const groupData = await getGroupInfo(Loftxmd, from, botId, rawSender);
         const {
             groupInfo,
             groupName,
@@ -688,7 +688,7 @@ function setupCommandHandler(Gifted) {
             );
             if (countryCodes.some((code) => sender.startsWith(code))) {
                 try {
-                    await Gifted.updateBlockStatus(sender, "block");
+                    await Loftxmd.updateBlockStatus(sender, "block");
                 } catch (blockErr) {
                     console.error("Block error:", blockErr);
                 }
@@ -706,14 +706,14 @@ function setupCommandHandler(Gifted) {
         } else if (autoReadMode === "commands" && isCommand) {
             shouldRead = true;
         }
-        if (shouldRead) await Gifted.readMessages([ms.key]);
+        if (shouldRead) await Loftxmd.readMessages([ms.key]);
 
         const bodyCmd = findBodyCommand(body);
         if (bodyCmd && bodyCmd.function) {
             if (settings.MODE?.toLowerCase() === "private" && !isSuperUser)
                 return;
             try {
-                const helpers = createHelpers(Gifted, ms, from);
+                const helpers = createHelpers(Loftxmd, ms, from);
                 const conText = buildContext(ms, settings, helpers, {
                     from,
                     isGroup,
@@ -739,12 +739,12 @@ function setupCommandHandler(Gifted) {
                     quotedMsg,
                     quotedKey,
                     quotedUser,
-                    Gifted,
+                    Loftxmd,
                     botId,
                     body,
                     command,
                 });
-                await bodyCmd.function(from, Gifted, conText);
+                await bodyCmd.function(from, Loftxmd, conText);
             } catch (error) {
                 console.error(`Body command error:`, error);
             }
@@ -758,21 +758,21 @@ function setupCommandHandler(Gifted) {
                 return;
 
             try {
-                const helpers = createHelpers(Gifted, ms, from);
+                const helpers = createHelpers(Loftxmd, ms, from);
 
                 if (settings.AUTO_REACT === "commands") {
                     const randomEmoji =
                         emojis[Math.floor(Math.random() * emojis.length)];
-                    await Gifted.sendMessage(from, {
+                    await Loftxmd.sendMessage(from, {
                         react: { key: ms.key, text: randomEmoji },
                     });
                 } else if (gmd.react) {
-                    await Gifted.sendMessage(from, {
+                    await Loftxmd.sendMessage(from, {
                         react: { key: ms.key, text: gmd.react },
                     });
                 }
 
-                setupGiftedHelpers(Gifted, from);
+                setupLoftxmdHelpers(Loftxmd, from);
 
                 const conText = buildContext(ms, settings, helpers, {
                     from,
@@ -799,17 +799,17 @@ function setupCommandHandler(Gifted) {
                     quotedMsg,
                     quotedKey,
                     quotedUser,
-                    Gifted,
+                    Loftxmd,
                     botId,
                     body,
                     command,
                 });
 
-                await gmd.function(from, Gifted, conText);
+                await gmd.function(from, Loftxmd, conText);
             } catch (error) {
                 console.error(`Command error [${command}]:`, error);
                 try {
-                    await Gifted.sendMessage(
+                    await Loftxmd.sendMessage(
                         from,
                         {
                             text: `🚨 Command failed: ${error.message}`,
@@ -828,9 +828,9 @@ function setupCommandHandler(Gifted) {
     });
 }
 
-function setupGiftedHelpers(Gifted, from) {
-    Gifted.getJidFromLid = async (lid) => {
-        const groupMetadata = await getGroupMetadata(Gifted, from);
+function setupLoftxmdHelpers(Loftxmd, from) {
+    Loftxmd.getJidFromLid = async (lid) => {
+        const groupMetadata = await getGroupMetadata(Loftxmd, from);
         if (!groupMetadata) return null;
         const match = groupMetadata.participants.find(
             (p) => p.lid === lid || p.id === lid,
@@ -838,8 +838,8 @@ function setupGiftedHelpers(Gifted, from) {
         return match?.pn || match?.phoneNumber || null;
     };
 
-    Gifted.getLidFromJid = async (jid) => {
-        const groupMetadata = await getGroupMetadata(Gifted, from);
+    Loftxmd.getLidFromJid = async (jid) => {
+        const groupMetadata = await getGroupMetadata(Loftxmd, from);
         if (!groupMetadata) return null;
         const match = groupMetadata.participants.find(
             (p) =>
@@ -856,7 +856,7 @@ function setupGiftedHelpers(Gifted, from) {
         fileType = await import("file-type");
     })();
 
-    Gifted.downloadAndSaveMediaMessage = async (
+    Loftxmd.downloadAndSaveMediaMessage = async (
         message,
         filename,
         attachExtension = true,
@@ -958,7 +958,7 @@ function buildContext(ms, settings, helpers, data) {
         ownerNumber: settings.OWNER_NUMBER,
         ownerName: settings.OWNER_NAME,
         botName: settings.BOT_NAME,
-        giftedRepo: settings.BOT_REPO,
+        loftRepo: settings.BOT_REPO,
         packName: settings.PACK_NAME,
         packAuthor: settings.PACK_AUTHOR,
         isSuperAdmin: data.isSuperAdmin,
@@ -970,12 +970,12 @@ function buildContext(ms, settings, helpers, data) {
         setCommitHash,
         getCommitHash,
         uploadToGithubCdn,
-        uploadToGiftedCdn,
+        uploadToLoftxmdCdn,
         uploadToCatbox,
         newsletterUrl: settings.NEWSLETTER_URL,
         newsletterJid: settings.NEWSLETTER_JID,
-        GiftedTechApi,
-        GiftedApiKey,
+        LoftxmdTechApi,
+        LoftxmdApiKey,
         botPrefix: settings.PREFIX,
         timeZone: settings.TIME_ZONE,
     };
@@ -984,5 +984,5 @@ function buildContext(ms, settings, helpers, data) {
 (async () => {
     await loadSession();
     await loadBotSettings();
-    startGifted();
+    startLoftxmd();
 })();
